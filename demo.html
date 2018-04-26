@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <div id="test">
+        <p>{{msg}}</p>
+        <p>{{msg}}</p>
+        <p>{{msg}}</p>
+        <p>{{what}}</p>
+        <p>{{hey}}</p>
+    </div>
+</body>
+<script>
+    var bindingMark = 'data-element-binding';
+    function Element(id,initData){
+        var self = this,
+            el = self.el =document.getElementById(id),
+        bindings = {},
+            //保存传入的数据
+        data = self.data = {},
+        content = el.innerHTML.replace(/\{\{(.*)\}\}/g,markToken);
+        el.innerHTML = content;
+
+        //对bindings进行属性劫持
+        for(var variable in bindings){
+            bind(variable);
+        }
+
+        if(initData){
+            for(var variable in initData){
+                data[variable] = initData[variable];
+            }
+        }
+
+        function markToken(match,variable){
+            //将标记符号存入bindings
+            bindings[variable] = {};
+            return '<span '+bindingMark+'="'+variable+'"></span>'
+        }
+
+        function bind(variable){
+            //将node存入到bindings对象对应属性中
+            bindings[variable].els = el.querySelectorAll('['+bindingMark+'="'+variable + '"]');
+            //移除绑定节点的绑定标记
+            [].forEach.call(bindings[variable].els,function(e){
+                e.removeAttribute(bindingMark);
+            });
+            //对data对象进行属性劫持
+            Object.defineProperty(data,variable,{
+                set:function(newVal){
+                    //data改变时页面也进行改变
+                    [].forEach.call(bindings[variable].els,function(e){
+                        bindings[variable].value = e.textContent = newVal;
+                    })
+                },
+                get:function(){
+                    return bindings[variable].value;
+                }
+            })
+        }
+    }
+
+    var app = new Element('test',{
+        msg:'hello'
+    });
+</script>
+</html>
