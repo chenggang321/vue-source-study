@@ -1,0 +1,26 @@
+npm install karma --save-dev
+npm install karma-jasmine karma-chrome-launcher jasmine-core --save-dev
+
+npm i --save-dev karma-coverage
+
+npm i --save-dev karma-webpack
+
+npm i --save-dev babel-loader babel-core babel-preset-es2015
+
+karma-webpack
+karma-sourcemap-loader
+karma-coverage
+chai
+sinon
+sinon-chai
+karma-sinon-chai
+karma-mocha-reporter
+
+karma-webpack：因为我们的项目代码是用es6或者es7写的，所以webpack编译是必须的
+karma-sourcemap-loader：sourcemap明显是必要的
+karma-coverage：做代码覆盖率的时候需要用
+chai：搭配mocha断言
+sinon：搭配mocha做spy、stub、mock
+sinon-chai：用chai来做sinon的断言，可以说是扩展
+karma-sinon-chai：方便在测试代码中的调用，直接就能用expect、sinon.spy等，不需要每个文件都import
+karma-mocha-reporter：mocha测试完的报告
