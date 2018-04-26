@@ -1,7 +1,5 @@
-/**
- * Created by HH_Girl on 2018/4/26.
- */
-var Directives = require('./directives'),
+var config = require('./config'),
+    Directives = require('./directives'),
     Filters = require('./filters');
 
 var KEY_RE = /^[^\|]+/,
@@ -16,6 +14,7 @@ function Directive(def, attr, arg, key) {
                 this['_update'] = def.update;
                 continue
             }
+            console.log(def);
             this[prop] = def[prop]
         }
     }
@@ -53,7 +52,8 @@ Directive.prototype.applyFilters = function (value) {
 
 module.exports = {
     // make sure the directive and value is valid
-    parse: function (attr, prefix) {
+    parse: function (attr) {
+        var prefix = config.prefix;
         if (attr.name.indexOf(prefix) === -1) return null;
         // parse directive name and argument 解析指令名称和参数
         var noprefix = attr.name.slice(prefix.length + 1),//去除开头标记

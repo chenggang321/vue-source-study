@@ -3,15 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
+    <style>
+        .red {
+            color: red;
+        }
+    </style>
 </head>
 <body>
 <div id="test" sd-on-click="changeMessage | delegate .button">
     <p sd-text="msg.wow | capitalize" sd-on-click="remove"></p>
     <p sd-text="msg.wow | uppercase" class="button"></p>
+    <p sd-text="total | money"></p>
     <p sd-class-red="error" sd-text="hello"></p>
-    <div sd-each="todos">
-        <span sd-text="text"></span>
-    </div>
+    <ul sd-show="todos">
+        <li sd-each-todo="todos" sd-text="todo.text"></li>
+    </ul>
 </div>
 <script src="dist/seed.js"></script>
 </body>

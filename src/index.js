@@ -1,148 +1,79 @@
-var prefix      = 'sd',
-    Directive   = require('./directive'),
-    Directives  = require('./directives'),
-    selector    = Object.keys(Directives).map(function (d) {
-        return '[' + prefix + '-' + d + ']'
+var config = require('./config'),
+    Seed = require('./seed'),
+    directives   = require('./directives'),
+    filters  = require('./filters');
+
+function buildSelector(){
+    config.selector = Object.keys(directives).map(function (directive) {
+        return '[' + config.prefix + '-' + directive + ']'
     }).join()
-
-function Seed (opts) {
-
-    var self = this,
-        root = this.el = document.getElementById(opts.id),
-        els  = root.querySelectorAll(selector)
-
-    self.bindings = {}
-    self.scope = {}
-
-        // process nodes for directives
-    ;[].forEach.call(els, this.compileNode.bind(this))
-    this.compileNode(root)
-
-    // initialize all variables by invoking setters
-    for (var key in self.bindings) {
-        self.scope[key] = opts.scope[key]
-    }
-
 }
 
-Seed.prototype.compileNode = function (node) {
-    var self = this
-    cloneAttributes(node.attributes).forEach(function (attr) {
-        var directive = Directive.parse(attr, prefix)
-        if (directive) {
-            self.bind(node, directive)
+Seed.config = config;
+buildSelector();
+
+Seed.extend = function(opts){
+    var Spore = function(){
+        Seed.apply(this,arguments);
+        for(var prop in this.extensions){
+            var ext = this.exception[prop];
+            this.scope[prop] = (typeof ext === 'function')
+                ? ext.bind(this)
+                : ext
         }
-    })
-}
-
-Seed.prototype.bind = function (node, directive) {
-
-    directive.el = node
-    node.removeAttribute(directive.attr.name)
-
-    var key      = directive.key,
-        binding  = this.bindings[key] || this.createBinding(key)
-
-    // add directive to this binding
-    binding.directives.push(directive)
-
-    // invoke bind hook if exists
-    if (directive.bind) {
-        directive.bind(node, binding.value)
+    };
+    Spore.prototype = Object.create(Seed.prototype);
+    Spore.prototype.exception = {};
+    for(var prop in opts){
+        Spore.prototype.exception[prop] = opts[prop];
     }
+    return Spore
+};
 
-}
+Seed.directive = function (name,fn){
+    directives[name] = fn;
+    buildSelector();
+};
 
-Seed.prototype.createBinding = function (key) {
+Seed.filter =function(name,fn){
+    filters[name] = fn;
+};
 
-    var binding = {
-        value: undefined,
-        directives: []
-    }
+Seed.filter('money', function (value) {
+    return '$' + value.toFixed(2)
+})
 
-    this.bindings[key] = binding
 
-    // bind accessor triggers to scope
-    Object.defineProperty(this.scope, key, {
-        get: function () {
-            return binding.value
-        },
-        set: function (value) {
-            binding.value = value
-            binding.directives.forEach(function (directive) {
-                directive.update(value)
-            })
-        }
-    })
 
-    return binding
-}
-
-Seed.prototype.dump = function () {
-    var data = {}
-    for (var key in this._bindings) {
-        data[key] = this._bindings[key].value
-    }
-    return data
-}
-
-Seed.prototype.destroy = function () {
-    for (var key in this._bindings) {
-        this._bindings[key].directives.forEach(unbind)
-    }
-    this.el.parentNode.remove(this.el)
-    function unbind (directive) {
-        if (directive.unbind) {
-            directive.unbind()
-        }
-    }
-}
-
-// clone attributes so they don't change
-function cloneAttributes (attributes) {
-    return [].map.call(attributes, function (attr) {
-        return {
-            name: attr.name,
-            value: attr.value
-        }
-    })
-}
-
-var app = new Seed({
-    id: 'test',
-    // template
-    scope: {
-        'msg.wow': 'wow',
-        hello: 'hello',
-        changeMessage: function () {
-            app.scope['msg.wow'] = 'hola'
-        },
-        remove: function () {
-            app.destroy()
-        },
-        todos: [
-            {
-                title: 'make this shit work',
-                done: false
-            },
-            {
-                title: 'make this shit kinda work',
-                done: true
-            }
-        ]
+// define a seed
+var Todos = Seed.extend({
+    id: 0,
+    changeMessage: function () {
+        this.scope['msg.wow'] = 'hola'
+    },
+    remove: function () {
+        this.destroy()
     }
 })
 
-module.exports = {
-    create: function (opts) {
-        return new Seed(opts)
-    },
-    directive: function () {
-        // create dir
-    },
-    filter: function () {
-        // create filter
-    }
-}
+var todos = new Todos('#test', {
+    total     : 1000,
+    'msg.wow' : 'wow',
+    hello     : 'hello',
+    todos     : [
+        {
+            title: 'make this shit work',
+            done: false
+        },
+        {
+            title: 'make this shit kinda work',
+            done: true
+        }
+    ]
+});
+
+console.log(todos);
+
+module.exports = Seed;
 
 

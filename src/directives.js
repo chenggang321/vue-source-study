@@ -1,3 +1,6 @@
+var config = require('./config'),
+    watchArray = require('./watchArray');
+
 module.exports = {
 
     text: function (value) {
@@ -14,7 +17,8 @@ module.exports = {
 
     on: {
         update: function (handler) {
-            var event = this.arg
+            var event = this.arg;
+            console.log(this);
             if (!this.handlers) {
                 this.handlers = {}
             }
@@ -37,17 +41,26 @@ module.exports = {
     },
 
     each: {
-        update: function () {
-            // augmentArray(collection, this)
-            // console.log('collection updated')
-        }
-        // mutate: function (mutation) {
-
-        // }
+        update: function (collection) {
+            augmentArray(collection,this)
+        },
+         mutate: function (mutation) {
+            console.log(mutation);
+         }
     }
 
-}
+};
 
-// function augmentArray (collection, directive) {
+var push = [].push,
+    slice = [].slice;
 
-// }
+ function augmentArray (collection, directive) {
+    collection.push = function(element){
+        push.call(this,arguments);
+        directive.mutate({
+            event:'push',
+            element:slice.call(arguments),
+            collection:collection
+        })
+    }
+ }
