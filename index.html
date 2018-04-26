@@ -5,11 +5,13 @@
     <title>Title</title>
 </head>
 <body>
-<div id="test" sd-on-click="changeMessage | .button">
-    <p sd-text="msg | capitalize"></p>
-    <p sd-show="something">YOYOYO</p>
-    <p class="button" sd-text="msg"></p>
+<div id="test" sd-on-click="changeMessage | delegate .button">
+    <p sd-text="msg.wow | capitalize" sd-on-click="remove"></p>
+    <p sd-text="msg.wow | uppercase" class="button"></p>
     <p sd-class-red="error" sd-text="hello"></p>
+    <div sd-each="todos">
+        <span sd-text="text"></span>
+    </div>
 </div>
 <script src="dist/seed.js"></script>
 </body>

@@ -1,79 +1,148 @@
-var prefix = 'sd',
-    Filters     = require('./filters'),
+var prefix      = 'sd',
+    Directive   = require('./directive'),
     Directives  = require('./directives'),
-    selector = Object.keys(Directives).map(function(d){
-        return '['+prefix+'-'+d+']'
-    }).join();//[sd-text],[sd-show],[sd-changeClass],[sd-on]
+    selector    = Object.keys(Directives).map(function (d) {
+        return '[' + prefix + '-' + d + ']'
+    }).join()
 
-function Seed(opts){
+function Seed (opts) {
+
     var self = this,
-        root = this.el =document.getElementById(opts.id),
-        els = root.querySelectorAll(selector),
-        bindings = {};//内部真实数据
-    self.scope = {};//外部接口
-    //绑定指令
-    [].forEach.call(els,processNode);
+        root = this.el = document.getElementById(opts.id),
+        els  = root.querySelectorAll(selector)
 
-    function processNode(el){
-        cloneAttributes(el.attributes).forEach(function(attr){
-            var directive = parseDirective(attr);
-        });
+    self.bindings = {}
+    self.scope = {}
+
+        // process nodes for directives
+    ;[].forEach.call(els, this.compileNode.bind(this))
+    this.compileNode(root)
+
+    // initialize all variables by invoking setters
+    for (var key in self.bindings) {
+        self.scope[key] = opts.scope[key]
     }
+
 }
 
-//clone 属性 不改变原属性
-function cloneAttributes(attributes){
-    return [].map.call(attributes,function(attr){
-        return {
-            name:attr.name,
-            value:attr.value
+Seed.prototype.compileNode = function (node) {
+    var self = this
+    cloneAttributes(node.attributes).forEach(function (attr) {
+        var directive = Directive.parse(attr, prefix)
+        if (directive) {
+            self.bind(node, directive)
         }
     })
 }
-//解析dom中的指令
-function parseDirective(attr){
-    if(attr.name.indexOf(prefix) === -1) return ;
-    var noprefix = attr.name.slice(prefix.length + 1),//去除开头标记
-        argIndex = noprefix.indexOf('-'),//是否还有-
-        dirname = argIndex === -1
-            ? noprefix
-            :noprefix.slice(0,argIndex),//指令名称
-        def = Directives[dirname],//指令回调
-        arg = argIndex === -1
-            ? null
-            : noprefix.slice(argIndex + 1);//第二个-后面的参数
-    var exp = attr.value,
-        pipeIndex = exp.indexOf('|'),
-        key = pipeIndex === -1
-            ? exp.trim()
-            : exp.slice(0,pipeIndex).trim(),
-        filters = pipeIndex === -1
-            ? null
-            : exp.slice(pipeIndex+1).split('|').map(function(filter){
-                return filter.trim();
-            });
-    console.log(exp,pipeIndex,key,filters);
+
+Seed.prototype.bind = function (node, directive) {
+
+    directive.el = node
+    node.removeAttribute(directive.attr.name)
+
+    var key      = directive.key,
+        binding  = this.bindings[key] || this.createBinding(key)
+
+    // add directive to this binding
+    binding.directives.push(directive)
+
+    // invoke bind hook if exists
+    if (directive.bind) {
+        directive.bind(node, binding.value)
+    }
+
+}
+
+Seed.prototype.createBinding = function (key) {
+
+    var binding = {
+        value: undefined,
+        directives: []
+    }
+
+    this.bindings[key] = binding
+
+    // bind accessor triggers to scope
+    Object.defineProperty(this.scope, key, {
+        get: function () {
+            return binding.value
+        },
+        set: function (value) {
+            binding.value = value
+            binding.directives.forEach(function (directive) {
+                directive.update(value)
+            })
+        }
+    })
+
+    return binding
+}
+
+Seed.prototype.dump = function () {
+    var data = {}
+    for (var key in this._bindings) {
+        data[key] = this._bindings[key].value
+    }
+    return data
+}
+
+Seed.prototype.destroy = function () {
+    for (var key in this._bindings) {
+        this._bindings[key].directives.forEach(unbind)
+    }
+    this.el.parentNode.remove(this.el)
+    function unbind (directive) {
+        if (directive.unbind) {
+            directive.unbind()
+        }
+    }
+}
+
+// clone attributes so they don't change
+function cloneAttributes (attributes) {
+    return [].map.call(attributes, function (attr) {
+        return {
+            name: attr.name,
+            value: attr.value
+        }
+    })
 }
 
 var app = new Seed({
     id: 'test',
     // template
     scope: {
-        msg: 'hello',
-        hello: 'WHWHWHW',
+        'msg.wow': 'wow',
+        hello: 'hello',
         changeMessage: function () {
-            app.scope.msg = 'hola'
-        }
+            app.scope['msg.wow'] = 'hola'
+        },
+        remove: function () {
+            app.destroy()
+        },
+        todos: [
+            {
+                title: 'make this shit work',
+                done: false
+            },
+            {
+                title: 'make this shit kinda work',
+                done: true
+            }
+        ]
     }
-});
-
+})
 
 module.exports = {
-    create:function(opts){
+    create: function (opts) {
         return new Seed(opts)
     },
-    filters:Filters,
-    directives:Directives
-};
+    directive: function () {
+        // create dir
+    },
+    filter: function () {
+        // create filter
+    }
+}
 
 
