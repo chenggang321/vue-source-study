@@ -3,7 +3,9 @@ var config = require('./config'),
     Filters = require('./filters');
 
 var KEY_RE = /^[^\|]+/,
-    FILTERS_RE = /\|[^\|]+/g;
+    FILTERS_RE = /\|[^\|]+/g,
+    FILTERS_TOKEN_RE = /[^\s']+|'[^']+'/g,
+    QUOTE_RE = /'/g;
 
 function Directive(def, attr, arg, key) {
     if (typeof def === 'function') {
@@ -23,11 +25,17 @@ function Directive(def, attr, arg, key) {
     var filters = attr.value.match(FILTERS_RE);
     if (filters) {
         this.filters = filters.map(function (filter) {
-            // TODO test performance against regex 对正则表达式测试性能
-            var tokens = filter.replace('|', '').trim().split(/\s+/);
+            var tokens = filter.slice(1)
+                .match(FILTERS_TOKEN_RE)
+                .map(function (token) {
+                    return token.replace(QUOTE_RE, '').trim();
+                });
             return {
+                name: tokens[0],
                 apply: Filters[tokens[0]],
-                args: tokens.length > 1 ? tokens.slice(1) : null
+                args: tokens.length > 1
+                    ? tokens.slice(1)
+                    : null
             }
         })
     }
@@ -42,7 +50,7 @@ Directive.prototype.update = function (value) {
 Directive.prototype.applyFilters = function (value) {
     var filtered = value;
     this.filters.forEach(function (filter) {
-        if(typeof filter === 'function'){
+        if (typeof filter === 'function') {
             filtered = filter.apply(filtered, filter.args);
         }
     });

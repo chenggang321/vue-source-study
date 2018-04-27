@@ -3,27 +3,11 @@ var config = require('./config'),
     directives   = require('./directives'),
     filters  = require('./filters');
 
-function buildSelector(){
-    config.selector = Object.keys(directives).map(function (directive) {
-        return '[' + config.prefix + '-' + directive + ']'
-    }).join()
-}
-
-function extend(target,source){
-    for(var prop in source){
-        target[prop] = source[prop];
-    }
-    return target;
-}
-
 Seed.config = config;
-buildSelector();
 
 Seed.extend = function(opts){
     var Spore = function(){
-        var arg = extend(arguments[1],opts);
-        console.log(arg);
-        Seed.call(this,arguments[0],arg);
+        Seed.apply(this,arguments);
         for(var prop in this.extensions){
             var ext = this.exception[prop];
             this.scope[prop] = (typeof ext === 'function')
@@ -41,7 +25,6 @@ Seed.extend = function(opts){
 
 Seed.directive = function (name,fn){
     directives[name] = fn;
-    buildSelector();
 };
 
 Seed.filter =function(name,fn){
@@ -52,33 +35,35 @@ Seed.filter('money', function (value) {
     return '$' + value.toFixed(2)
 });
 
+var list = [
+    {
+        title: 'make this shit kinda work',
+        done: true
+    },
+    {
+        title: 'make this shit work',
+        done: false
+    },
+    {
+        title: 'more features!!!',
+        done: false
+    }
+];
 
-// define a seed
-var Todos = Seed.extend({
-    id: 0,
+var s = Date.now();
+
+var todos = new Seed('#test', {
+    total     : Math.random() * 100000,
+    'msg.wow' : 'wow',
+    hello     : 'hello',
+    todos     : list,
     changeMessage: function () {
-        todos.scope['msg.wow'] = 'hola'
+        this.scope['msg.wow'] = 'holaoooo'
     },
     remove: function () {
-        todos.destroy()
+        this.destroy()
     }
 });
 
-
-var todos = new Todos('#test', {
-    total     : 1000,
-    'msg.wow' : 'wow',
-    hello     : 'hello',
-    todos     : [
-        {
-            title: 'make this shit work',
-            done: false
-        },
-        {
-            title: 'make this shit kinda work',
-            done: true
-        }
-    ]
-});
-console.log(todos);
+console.log(Date.now() - s + 'ms');
 module.exports = Seed;
