@@ -53,6 +53,8 @@ Seed.prototype._bind = function (node, directive) {
 
 Seed.prototype._createBinding = function (key) {
 
+    var self = this;
+
     var binding = {
         value: undefined,
         directives: []
@@ -65,7 +67,7 @@ Seed.prototype._createBinding = function (key) {
             return binding.value
         },
         set: function (value) {
-            binding.value = value
+            binding.value = value;
             binding.directives.forEach(function (directive) {
                 directive.update(value)
             })

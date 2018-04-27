@@ -14,7 +14,6 @@ function Directive(def, attr, arg, key) {
                 this['_update'] = def.update;
                 continue
             }
-            console.log(def);
             this[prop] = def[prop]
         }
     }

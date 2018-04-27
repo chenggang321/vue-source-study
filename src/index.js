@@ -9,12 +9,21 @@ function buildSelector(){
     }).join()
 }
 
+function extend(target,source){
+    for(var prop in source){
+        target[prop] = source[prop];
+    }
+    return target;
+}
+
 Seed.config = config;
 buildSelector();
 
 Seed.extend = function(opts){
     var Spore = function(){
-        Seed.apply(this,arguments);
+        var arg = extend(arguments[1],opts);
+        console.log(arg);
+        Seed.call(this,arguments[0],arg);
         for(var prop in this.extensions){
             var ext = this.exception[prop];
             this.scope[prop] = (typeof ext === 'function')
@@ -41,20 +50,20 @@ Seed.filter =function(name,fn){
 
 Seed.filter('money', function (value) {
     return '$' + value.toFixed(2)
-})
-
+});
 
 
 // define a seed
 var Todos = Seed.extend({
     id: 0,
     changeMessage: function () {
-        this.scope['msg.wow'] = 'hola'
+        todos.scope['msg.wow'] = 'hola'
     },
     remove: function () {
-        this.destroy()
+        todos.destroy()
     }
-})
+});
+
 
 var todos = new Todos('#test', {
     total     : 1000,
@@ -71,9 +80,5 @@ var todos = new Todos('#test', {
         }
     ]
 });
-
 console.log(todos);
-
 module.exports = Seed;
-
-

@@ -17,23 +17,23 @@ module.exports = {
 
     on: {
         update: function (handler) {
-            var event = this.arg;
             console.log(this);
+            var event = this.arg;
             if (!this.handlers) {
                 this.handlers = {}
             }
-            var handlers = this.handlers
+            var handlers = this.handlers;
             if (handlers[event]) {
                 this.el.removeEventListener(event, handlers[event])
             }
             if (handler) {
-                handler = handler.bind(this.el)
-                this.el.addEventListener(event, handler)
+                handler = handler.bind(this.el);
+                this.el.addEventListener(event, handler);
                 handlers[event] = handler
             }
         },
         unbind: function () {
-            var event = this.arg
+            var event = this.arg;
             if (this.handlers) {
                 this.el.removeEventListener(event, this.handlers[event])
             }
