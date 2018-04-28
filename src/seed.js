@@ -143,7 +143,7 @@ Seed.prototype._bind = function (node, bindingInstance) {
 
     // invoke bind hook if exists
     if (bindingInstance.bind) {
-        bindingInstance.bind.call(this);
+        bindingInstance.bind.call(bindingInstance);
     }
 
 };

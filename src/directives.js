@@ -45,8 +45,8 @@ module.exports = {
             // todo fix sd-each
             var ctn = this.container = this.el.parentNode;
             this.marker = document.createComment('sd-each-' + this.arg + '-marker');
-            //ctn.insertBefore(this.marker, this.el);
-            //ctn.removeChild(this.el);
+            ctn.insertBefore(this.marker, this.el);
+            ctn.removeChild(this.el);
             this.childSeeds = []
         },
         update: function (collection) {
@@ -57,7 +57,8 @@ module.exports = {
                 this.childSeeds = []
             }
             this.childSeeds = [];
-            //watchArray(collection, this.mutate.bind(this));
+            console.log(collection, this.mutate.bind(this));
+            watchArray(collection, this.mutate.bind(this));
             var self = this;
             collection.forEach(function (item, i) {
                 self.childSeeds.push(self.buildItem(item, i, collection))
@@ -74,7 +75,7 @@ module.exports = {
                 eachPrefixRE:this.prefixRE,
                 parentSeed:this.seed
             });
-            //this.container.insertBefore(node, this.marker);
+            this.container.insertBefore(node, this.marker);
             collection[index] = spore.scope;
             return spore
         }

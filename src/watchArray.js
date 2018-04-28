@@ -9,13 +9,15 @@ var proto = Array.prototype,
         'splice',
         'sort'
     ];
-module.exports = function(arr,callback){
-    mutatorMethods.forEach(function(method){
-        arr[method].apply(this,arguments);
-        callback({
-            event:method,
-            args:slice.call(arguments),
-            array:arr
-        });
+module.exports = function (arr, callback) {
+    mutatorMethods.forEach(function (method) {
+        arr[method] = function () {
+            proto[method].apply(this, arguments)
+            callback({
+                event: method,
+                args: slice.call(arguments),
+                array: arr
+            });
+        };
     });
 };

@@ -7,7 +7,7 @@ var config = require('./config'),
 
 Seed.config = config;
 
-Seed.extend = function (opts) {
+/*Seed.extend = function (opts) {
     var Spore = function () {
         Seed.apply(this, arguments);
         for (var prop in this.extensions) {
@@ -23,7 +23,7 @@ Seed.extend = function (opts) {
         Spore.prototype.exception[prop] = opts[prop];
     }
     return Spore
-};
+};*/
 
 Seed.controller = function (id, extensions) {
     if (controllers[id]) {
@@ -33,6 +33,7 @@ Seed.controller = function (id, extensions) {
 };
 
 Seed.bootstrap = function (seeds) {
+    console.log(seeds);
     if (!Array.isArray(seeds)) seeds = [seeds];
     var instances = [];
     seeds.forEach(function (seed) {
@@ -67,7 +68,6 @@ Seed.filter('money', function (value) {
 
 Seed.controller('TodoList', function (scope, seed) {
     scope.changeMessage = function () {
-        console.log('success');
         scope.msg = 'It works!'
     };
     scope.remove = function () {
