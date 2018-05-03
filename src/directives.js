@@ -1,11 +1,12 @@
 var config = require('./config'),
     controllers = require('./controllers'),
-    watchArray = require('./watchArray');
+    watchArray = require('./watch-array');
 
 module.exports = {
 
     text: function (value) {
-        this.el.textContent = value || ''
+        this.el.textContent = value === null ?
+            '':value.toString();
     },
 
     show: function (value) {
@@ -13,11 +14,36 @@ module.exports = {
     },
 
     class: function (value) {
-        this.el.classList[value ? 'add' : 'remove'](value)
+        if(this.arg){
+            this.el.classList[value ? 'add' : 'remove'](this.arg)
+        }else{
+            this.el.classList.remove(this.lastVal);
+            this.el.classList.add(value);
+            this.lastVal = value
+        }
+
+    },
+
+    checked:{
+        bind: function () {
+            var el = this.el,
+                self = this;
+            this.change = function () {
+                self.seed.scope[self.key] = el.checked
+            };
+            el.addEventListener('change', this.change)
+        },
+        update: function (value) {
+            this.el.checked = value
+        },
+        unbind: function () {
+            this.el.removeEventListener('change', this.change)
+        }
     },
 
     on: {
         update: function (handler) {
+            var self = this;
             var event = this.arg;
 
             event = event.match(/[^:]+/g)[0];
@@ -26,14 +52,22 @@ module.exports = {
                 this.el.removeEventListener(event, this.handler)
             }
             if (handler) {
-                this.el.addEventListener(event, handler);
-                this.handler = handler
+                var proxy = function (e) {
+                    handler({
+                        el            : e.currentTarget,
+                        originalEvent : e,
+                        directive     : self,
+                        seed          : e.currentTarget.seed
+                    })
+                };
+                this.el.addEventListener(event, proxy);
+                this.handler = proxy
             }
         },
         unbind: function () {
             var event = this.arg;
             if (this.handlers) {
-                this.el.removeEventListener(event, this.handlers[event])
+                this.el.removeEventListener(event, this.handler)
             }
         }
     },
@@ -41,44 +75,47 @@ module.exports = {
     each: {
         bind: function () {
             this.el.removeAttribute(config.prefix + '-each');
-            this.prefixRE = new RegExp('^' + this.arg + '.');
             // todo fix sd-each
             var ctn = this.container = this.el.parentNode;
-            this.marker = document.createComment('sd-each-' + this.arg + '-marker');
+            this.marker = document.createComment('sd-each-' + this.arg);
             ctn.insertBefore(this.marker, this.el);
             ctn.removeChild(this.el);
             this.childSeeds = []
         },
         update: function (collection) {
-            if (this.childSeeds && this.childSeeds.length) {
-                this.childSeeds.forEach(function (child) {
-                    child.destroy()
-                });
-                this.childSeeds = []
-            }
+            this.unbind(true);
             this.childSeeds = [];
-            console.log(collection, this.mutate.bind(this));
+            if(!Array.isArray(collection)) return;
             watchArray(collection, this.mutate.bind(this));
             var self = this;
             collection.forEach(function (item, i) {
                 self.childSeeds.push(self.buildItem(item, i, collection))
-            })
-        },
-        mutate: function (mutation) {
-            console.log(mutation);
+            });
         },
         buildItem: function (data, index, collection) {
             var Seed = require('./seed'),
                 node = this.el.cloneNode(true);
-
-            var spore = new Seed(node,data,{
-                eachPrefixRE:this.prefixRE,
-                parentSeed:this.seed
+            //对node添加数据
+            var spore = new Seed(node, {
+                eachPrefixRE:new RegExp('^'+this.arg+'.') ,
+                parentSeed: this.seed,
+                index: index,
+                data:data
             });
             this.container.insertBefore(node, this.marker);
             collection[index] = spore.scope;
             return spore
+        },
+        mutate:function(mutation){
+            console.log(mutation);
+        },
+        unbind:function(rm){
+            if(this.childSeeds.length){
+                var fn = rm ? 'destroy':'unbind';
+                this.childSeeds.forEach(function(child){
+                    child[fn]();
+                })
+            }
         }
     }
-
 };

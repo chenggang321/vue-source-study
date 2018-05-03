@@ -1,115 +1,112 @@
 var config = require('./config'),
     Seed = require('./seed'),
     directives = require('./directives'),
-    filters = require('./filters'),
-    controllers = require('./controllers');
+    filters = require('./filters');
 
+var controllers = config.controllers = {},
+    datum = config.datum = {},
+    api = {};
 
-Seed.config = config;
+//API
 
-/*Seed.extend = function (opts) {
-    var Spore = function () {
-        Seed.apply(this, arguments);
-        for (var prop in this.extensions) {
-            var ext = this.exception[prop];
-            this.scope[prop] = (typeof ext === 'function')
-                ? ext.bind(this)
-                : ext
-        }
-    };
-    Spore.prototype = Object.create(Seed.prototype);
-    Spore.prototype.exception = {};
-    for (var prop in opts) {
-        Spore.prototype.exception[prop] = opts[prop];
-    }
-    return Spore
-};*/
+api.data = function(id,data){
+  if(!data) return datum[id];
+  if(datum[id]){
+      console.warn('data object "'+id+'""already exists has been overwritten')
+  }
+  datum[id] = data;
+};
 
-Seed.controller = function (id, extensions) {
-    if (controllers[id]) {
-        console.warn('controller"' + id + '"was already and has been overwritten')
+api.controller = function(id,extensions){
+    if(!extensions) return controllers[id];
+    if(controllers[id]){
+        console.warn('controller "'+id+'""already exists has been overwritten')
     }
     controllers[id] = extensions;
 };
 
-Seed.bootstrap = function (seeds) {
-    console.log(seeds);
-    if (!Array.isArray(seeds)) seeds = [seeds];
-    var instances = [];
-    seeds.forEach(function (seed) {
-        var el = seed.el;
-        if (typeof el === 'string') {
-            el = document.querySelector(el);
-        }
-        if (!el) console.warn('invalid element or selector:' + seed.el);
-        instances.push(new Seed(el, seed.data, seed.options));
-    });
-    return instances.length > 1
-        ? instances
-        : instances[0]
-};
-
-Seed.directive = function (name, fn) {
+api.directive = function (name, fn) {
     directives[name] = fn;
 };
 
-Seed.filter = function (name, fn) {
+api.filter = function (name, fn) {
     filters[name] = fn;
 };
-Seed.evolve = Seed.controller;
-Seed.plant = Seed.bootstrap;
 
-/********************************  实例代码 **************************************/
-Seed.filter('money', function (value) {
-    return value
-        ? '$' + value.toFixed(2)
-        : ''
-});
-
-Seed.controller('TodoList', function (scope, seed) {
-    scope.changeMessage = function () {
-        scope.msg = 'It works!'
-    };
-    scope.remove = function () {
-        seed.destroy();
+api.bootstrap = function (opts) {
+    if(opts){
+        config.prefix = opts.prefix || config.prefix;
     }
-});
-
-Seed.controller('Todo', function (scope) {
-    scope.toggle = function () {
-        scope.done = !scope.done
-    }
-});
-
-var s = Date.now();
-
-var data = {
-    msg: 'hello!',
-    total: 9999,
-    red: 'red',
-    todos: [
-        {
-            title: 'hello!',
-            done: true
-        },
-        {
-            title: 'hello!!',
-            done: false
-        },
-        {
-            title: 'hello!!!',
-            done: false
+    var app = {},
+        n = 0,
+        el, seed;
+    while (el = document.querySelector('[' + config.prefix + '-controller]')) {
+        seed = new Seed(el);
+        if (el.id) {
+            app['$' + el.id] = seed
         }
-    ]
+        n++
+    }
+    return n > 1 ? app : seed
 };
 
-var app = Seed.bootstrap({
-    el:'#app',
-    data:data
+
+/********************************  实例代码 **************************************/
+var todos = [
+    { text: 'make nesting controllers work', done: true },
+    { text: 'complete ArrayWatcher', done: false },
+    { text: 'computed properties', done: false },
+    { text: 'parse textnodes', done: false }
+];
+
+api.data('test',{todos:todos});
+
+api.controller('Todos', function (scope, seed) {
+
+    // regular properties
+    //scope.todos = todos;
+    scope.filter = 'all';
+    scope.remaining = scope.todos.reduce(function (count, todo) {
+        return count + (todo.done ? 0 : 1)
+    }, 0);
+
+    // computed properties
+    scope.total = function () {
+        return scope.todos.length
+    };
+
+    scope.completed = function () {
+        return scope.todos.length - scope.remaining
+    };
+
+    // event handlers
+    scope.addTodo = function (e) {
+        var text = e.el.value;
+        if (text) {
+            e.el.value = '';
+            scope.todos.push({
+                text: text,
+                done: false
+            });
+            scope.remaining++
+        }
+    };
+
+    scope.removeTodo = function (e) {
+        scope.todos.splice(e.seed.index, 1);
+        scope.remaining -= e.seed.scope.done ? 0 : 1
+    };
+
+    scope.toggleTodo = function (e) {
+        scope.remaining += e.seed.scope.done ? -1 : 1
+    };
+
+    scope.setFilter = function (e) {
+        scope.filter = e.el.className
+    }
+
 });
-
-console.log(Date.now() - s + 'ms');
-
+api.bootstrap();
 /************************************ 实例代码 ***********************************/
 
-module.exports = Seed;
+module.exports = api;

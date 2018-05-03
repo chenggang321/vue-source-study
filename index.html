@@ -10,24 +10,44 @@
         .todo.done{
             text-decoration: line-through;
         }
+        #app.all .all {
+            font-weight: bold;
+        }
+        #app.remaining .todo.done {
+            display: none;
+        }
+        #app.remaining .remaining {
+            font-weight: bold;
+        }
+        #app.completed .todo:not(.done) {
+            display: none;
+        }
+        #app.completed .completed {
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
-<div id="app" sd-controller="TodoList"  sd-on="click:changeMessage | delegate .button">
-    <p sd-text="msg | capitalize"></p>
-    <p sd-text="msg | uppercase"></p>
-    <p sd-text="total | money"></p>
-    <p class="button">Change Message</p>
-    <p sd-class="red" sd-show="error">Error</p>
+<div id="app" sd-controller="Todos" sd-data="test" sd-class="filter">
+    <div>
+        <input placeholder="What needs to be done?" sd-on="change:addTodo">
+    </div>
     <ul sd-show="todos">
-        <li class="todo"
-            sd-controller="Todo"
-            sd-each="todo:todos"
-            sd-class="done:todo.done"
-            sd-on="click:changeMessage,click:todo.toggle"
-            sd-text="todo.title"
-        ></li>
+        <li class="todo" sd-each="todo:todos" sd-class="done:todo.done">
+            <input type="checkbox" sd-checked="todo.done" sd-on="change:toggleTodo">
+            <span sd-text="todo.text"></span>
+            <a sd-on="click:removeTodo">X</a>
+        </li>
     </ul>
+    <div id="footer">
+        Total: <span sd-text="total < todos"></span> |
+        Remaining: <span sd-text="remaining"></span> |
+        Completed: <span sd-text="completed < remaining total"></span>
+        <br>
+        <a class="all" sd-on="click:setFilter">Show All</a> |
+        <a class="remaining" sd-on="click:setFilter">Show Remaining</a> |
+        <a class="completed" sd-on="click:setFilter">Show Completed</a>
+    </div>
 </div>
 <script src="dist/seed.js"></script>
 </body>

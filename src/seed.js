@@ -1,46 +1,46 @@
 var config = require('./config'),
     controllers = require('./controllers'),
-    bindingParse = require('./binding');
+    DirectiveParser = require('./directive-parser');
 
-var map = Array.prototype.map;
-var each = Array.prototype.forEach;
+var slice = Array.prototype.slice;
 
-//lazy init
-
-var ctrlAttr,
-    eachAttr;
-
-function Seed(el, data, options) {
-
-    //refresh
-    ctrlAttr = config.prefix + '-controller';
+var ancestorKeyRE = /\^/g,
+    rootKeyRE = /^\$/,
+    ctrlAttr = config.prefix +'-controller',
     eachAttr = config.prefix + '-each';
 
+function Seed(el, options) {
     if (typeof el === 'string') {
         el = document.querySelector(el);
     }
 
+    el.seed =this;
     this.el = el;
-    this.scope = data;//外部数据
     this._bindings = {};//内部数据
-    this._options = options || {};//配置
 
-    //复制一份传入的数据
-    var key,dataCopy = {};
-    for(key in data){
-        dataCopy[key] = data[key];
+    if (options) {
+        for(var op in options){
+            this[op] = options[op];
+        }
     }
+
+    //initialize the scope object
+    var dataPrefix = config.prefix + '-data';
+    this.scope =
+        (options && options.data)
+        || config.datum[el.getAttribute(dataPrefix)]
+        || {};
+
+    el.removeAttribute(dataPrefix);
 
     // if has controller
     var ctrlId = el.getAttribute(ctrlAttr);
     var controller = null;
 
     if(ctrlId){
-        controller = controllers[ctrlId];
+        controller = config.controllers[ctrlId];
+        if(!controller) console.warn('controller'+ctrlId+'is not defined');
         el.removeAttribute(ctrlAttr);
-        if(!controller){
-            throw new Error('controller'+ctrlId+'is not defined');
-        }
     }
 
     // process nodes for directives
@@ -48,22 +48,16 @@ function Seed(el, data, options) {
 
     //copy in methods from controller
     if(controller){
-        controller.call(null,this.scope,this);
-    }
-
-    // initialize all variables by invoking setters
-    for (var key in dataCopy) {
-        this.scope[key] = dataCopy[key]
+        controller.call(this,this.scope,this);
     }
 }
-
+//Emitter(Seed.prototype)
 Seed.prototype._compileNode = function (node,root) {
     var self = this;
-
     if (node.nodeType === 3) {
         //text node 对文字节点编译
         self._compileTextNode(node);
-    } else if (node.attributes && node.attributes.length) {//对元素节点操作
+    } else{
         var eachExp = node.getAttribute(eachAttr);// sd-each 的值
         var ctrlExp = node.getAttribute(ctrlAttr);// sd-controller 的值
 
@@ -76,27 +70,29 @@ Seed.prototype._compileNode = function (node,root) {
             *
             * 绑定的元素
             * */
-            var binding = bindingParse.parse(eachAttr,eachExp);
+            var binding = DirectiveParser.parse(eachAttr,eachExp);
             if(binding){
                 /*
                 * 将binding 绑定到 node 上并存到
                 * */
                 self._bind(node,binding);
             }
-        }else if(!ctrlExp || root){//skip nested controllers
+        }else if(ctrlExp && !root) {//nested controllers
+            var id=node.id,
+                seed = new Seed(node,{
+                    parentSeed:self
+                });
+            if(id){
+                self['$'+id]=seed;
+            }
+        }else if(node.attributes && node.attributes.length){//normal node
             //normal node
             //clone attributes because the list can change
-            var attrs = map.call(node.attributes,function(attr){
-                return {
-                    name:attr.name,
-                    extensions:attr.value.split(',')
-                }
-            });
 
-            attrs.forEach(function(attr){
+            slice.call(node.attributes).forEach(function(attr){
                 var valid = false;
-                attr.extensions.forEach(function(exp){
-                    var binding = bindingParse.parse(attr.name,exp);
+                attr.value.split(',').forEach(function(exp){
+                    var binding = DirectiveParser.parse(attr.name,exp);
                     if(binding){
                         valid = true;
                         self._bind(node,binding);
@@ -104,9 +100,11 @@ Seed.prototype._compileNode = function (node,root) {
                 });
                 if(valid) node.removeAttribute(attr.name);
             });
+        }
+        if(!eachExp && !ctrlExp){
             // 通过递归遍历所有子元素
             if(node.childNodes.length){
-                each.call(node.childNodes,function(child){
+                slice.call(node.childNodes).forEach(function(child){
                     self._compileNode(child);
                 })
             }
@@ -119,38 +117,64 @@ Seed.prototype._compileTextNode = function(node){
     return node
 };
 
-Seed.prototype._bind = function (node, bindingInstance) {
+Seed.prototype._bind = function (node, directive) {
 
-    bindingInstance.seed = this;//将这个实例存入 binding
-    bindingInstance.el = node;
+    directive.seed = this;//将这个实例存入 binding
+    directive.el = node;
 
-    var key = bindingInstance.key,
-        epr = this._options.eachPrefixRE,
+    var key = directive.key,
+        epr = this.eachPrefixRE,
         isEachKey = epr && epr.test(key),
-        seed = this;
-    // TODO make scope chain work on nested controllers
+        scopeOwner = this;
+
+
     if(isEachKey){
         key = key.replace(epr,'');
-    }else if (epr){
-        seed = this._options.parentSeed;
     }
 
+    //handle scope nesting
+    if(epr&&!isEachKey){
+        scopeOwner =this.parentSeed;
+    }else{
+        var ancestors = key.match(ancestorKeyRE),
+            root = key.match(rootKeyRE);
+        if(ancestors){
+            key = key.replace(ancestorKeyRE,'');
+            var levels = ancestors.length;
+            while (scopeOwner.parentSeed && levels--){
+                scopeOwner = scopeOwner.parentSeed;
+            }
+        }else if(root){
+            key = key.replace(rootKeyRE,'');
+            while (scopeOwner.parentSeed){
+                scopeOwner = scopeOwner.parentSeed;
+            }
+        }
+    }
+
+    directive.key = key;
+
     //生成binding 并加入 bindings 同时通过属性劫持 与 scope 绑定
-    var binding = seed._bindings[key] || seed._createBinding(key);
+    var binding = scopeOwner._bindings[key] || scopeOwner._createBinding(key);
     // add directive to this binding
-    binding.instance.push(bindingInstance);
+    binding.instance.push(directive);
 
 
     // invoke bind hook if exists
-    if (bindingInstance.bind) {
-        bindingInstance.bind.call(bindingInstance);
+    if (directive.bind) {
+        directive.bind(binding.value);//*** directive
+    }
+
+    //set initial value
+    if(binding.value){
+        directive.update(binding.value)
     }
 
 };
 
 Seed.prototype._createBinding = function (key) {
     var binding = {
-        value: undefined,
+        value: this.scope[key],
         instance: []
     };
     this._bindings[key] = binding;
@@ -170,14 +194,6 @@ Seed.prototype._createBinding = function (key) {
 
     return binding
 };
-
-Seed.prototype.dump = function () {
-    var data = {};
-    for (var key in this._bindings) {
-        data[key] = this._bindings[key].value
-    }
-    return data
-}
 
 Seed.prototype.destroy = function () {
     for (var key in this._bindings) {
