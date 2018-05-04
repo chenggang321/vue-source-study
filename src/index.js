@@ -62,7 +62,7 @@ var todos = [
 api.data('test',{todos:todos});
 
 api.controller('Todos', function (scope, seed) {
-
+    console.log(scope);
     // regular properties
     //scope.todos = todos;
     scope.filter = 'all';

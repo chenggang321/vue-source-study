@@ -51,7 +51,6 @@ function Seed(el, options) {
         controller.call(this,this.scope,this);
     }
 }
-//Emitter(Seed.prototype)
 Seed.prototype._compileNode = function (node,root) {
     var self = this;
     if (node.nodeType === 3) {
@@ -195,17 +194,28 @@ Seed.prototype._createBinding = function (key) {
     return binding
 };
 
+Seed.prototype.unbind = function(){
+  var unbind = function(instance){
+      if(instance.unbind){
+          instance.unbind();
+      }
+  };
+  for(var key in this._bindings){
+      this._bindings[key].instance.forEach(unbind);
+  }
+  this.childSeeds.forEach(function(child){
+      child.unbind()
+  })
+};
+
 Seed.prototype.destroy = function () {
-    for (var key in this._bindings) {
-        this._bindings[key].instance.forEach(unbind);
-        delete this._bindings[key];
-    }
-    this.el.parentNode.removeChild(this.el);
-    function unbind(instance) {
-        if (instance.unbind) {
-            instance.unbind()
-        }
+    this.unbind();
+    this.el.parentSeed.removeChild(this.el);
+    if(this.parentSeed && this.id){
+        delete this.parentSeed['$'+this.id]
     }
 };
+
+//Emitter(Seed.prototype);
 
 module.exports = Seed;
